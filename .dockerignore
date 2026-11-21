@@ -4,3 +4,10 @@ __pycache__
 data
 test_image.png
 train_cnn.py
+training
+models
+checkpoints
+*.db
+*.ipynb
+.ipynb_checkpoints
+.env

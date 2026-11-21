@@ -6,12 +6,26 @@ dist/
 wheels/
 *.egg-info
 
-# Virtual environments
+# Virtual environments and secrets (the Hugging Face token lives in .env)
 .venv
 .env
 
-# Downloaded datasets (CIFAR10, MNIST), not committed
+# Downloaded datasets (CIFAR10, MNIST, Bitext), never committed
 data/
 
 # Local test image
 test_image.png
+
+# Final project: model weights and training outputs (published to Hugging Face instead)
+models/
+checkpoints/
+*.safetensors
+*.bin
+*-lora/
+
+# Final project: SQLite database (rebuilt from store/ by the seed script)
+*.db
+*.sqlite
+
+# Notebook clutter
+.ipynb_checkpoints/
