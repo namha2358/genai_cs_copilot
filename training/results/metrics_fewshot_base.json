@@ -1,0 +1,19 @@
+{
+  "rows": 2672,
+  "unknown_rate": 0.0281,
+  "overall_accuracy": 0.6901,
+  "overall_macro_f1": 0.6828,
+  "inscope_rows": 396,
+  "inscope_accuracy": 0.8485,
+  "inscope_macro_f1": 0.7605,
+  "f1_cancel_order": 0.7148,
+  "f1_get_refund": 0.76,
+  "f1_track_refund": 0.6267,
+  "f1_check_refund_policy": 0.9406,
+  "name": "fewshot_base",
+  "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+  "revision": null,
+  "prompt": "few_shot",
+  "data": "training/results/preds_fewshot_base.csv",
+  "sec_per_message": 0.889
+}

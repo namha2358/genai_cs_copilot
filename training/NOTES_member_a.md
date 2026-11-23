@@ -47,3 +47,60 @@ Short notes for the report section. Numbers come from `training/results/*.csv`.
   - An assertion checks that no group crosses splits.
 - Limitation for the report: Bitext is template-generated, so overlap remains even after grouping. Using a TF-IDF vectorizer fit on train, 42% of test rows have a train message with cosine ≥ 0.9, and 83% have one with cosine ≥ 0.8. Test-split accuracy will therefore be optimistic. C's hand-made test set is the out-of-distribution check.
 - Training cap: not applied in the split files. The training notebook will cap examples per intent.
+
+## 4. Shared prompt and loading module (handoff 5)
+- `app/intent_prompt.py` is the single source for the label list, the system prompt, the few-shot examples and the output parser. The baseline, the training notebook and the app all import it, so they can't drift apart.
+- Prompt: a system message lists all 27 Bitext labels and asks for the label only. The model's chat template is applied, and decoding is greedy with at most 8 new tokens.
+- Few-shot:
+  - 12 examples, 3 per in-scope intent, copied verbatim from the **train** split and interleaved by intent.
+  - They are given as earlier user/assistant turns, the multi-turn chat pattern from the Hugging Face chat-templating docs. **UNVERIFIED:** I'm relying on that docs pattern, not a class notebook (the plan says few-shot isn't covered in class).
+- Parser: the first word must be an exact label; otherwise the first valid label found anywhere in the reply; otherwise `unknown`. The 23 other Bitext intents map to `out_of_scope`.
+- `app/intent_model.py` implements `classify(message) -> label` and `generate(prompt, max_length) -> str`:
+  - It loads once and is configured by environment variables (`INTENT_MODEL_ID`, `INTENT_MODEL_REVISION`, `INTENT_MODEL_DTYPE`, `INTENT_PROMPT`).
+  - bfloat16 by default; float16 is refused.
+  - I tested it with the base model: "cancel order 1234" gave `cancel_order`, "where is my refund??" gave `track_refund`, and a weather question gave `unknown`.
+- Pending for the decisions log: the environment variable names, and `max_length` meaning max *new* tokens.
+
+## 5. Metrics (`training/eval_intents.py`, used for every model)
+- Overall accuracy and macro-F1 over the 27 Bitext labels. An unparsable output counts as wrong.
+- In-scope accuracy: accuracy on rows whose true intent is one of the 4 in-scope intents (396 test rows).
+- In-scope macro-F1: the F1 of each in-scope label, averaged, computed on **all** rows after collapsing to app labels. Out-of-scope messages wrongly given an in-scope label (false positives) lower this score.
+- Confusion matrix on the app labels: the 4 in-scope intents, `out_of_scope` and `unknown`.
+
+## 6. Results on the Bitext test split (2,672 rows)
+
+| model | overall acc | overall macro-F1 | in-scope acc | in-scope macro-F1 | unknown rate | s/message (CPU) |
+|---|---|---|---|---|---|---|
+| TF-IDF + logistic regression | 0.997 | 0.997 | 0.992 | 0.996 | 0 | ~0 |
+| Qwen2.5-1.5B-Instruct, few-shot (bf16) | 0.690 | 0.683 | 0.848 | 0.761 | 0.028 | 0.89 (batch 16) |
+| Qwen2.5-1.5B-Instruct + LoRA | pending (Colab) | | | | | |
+
+- TF-IDF details:
+  - word 1–2-grams plus char 3–5-grams, logistic regression
+  - C=10, chosen on the validation split (val accuracy 0.998)
+  - trained on all 21,528 training rows
+- **Finding:** a bag-of-words model nearly solves the Bitext test split, so Bitext intents are highly lexical and templated, even with grouped splits.
+  - The Bitext test split therefore shows "fine-tuning fixes the few-shot model's errors", but it can't show that an LLM beats a simple classifier.
+  - That comparison needs C's hand-made set: messy wording, two requests in one message, out-of-scope and prompt-injection messages. This is a report point and limitation, not a change to the agreements.
+- Few-shot error patterns (examples for the report):
+  - `track_refund` → `get_refund` on 51 of 99 messages, e.g. "I'm waiting for a reimbursement of 1200dollars". The phrasing really is ambiguous.
+  - Out-of-scope → `cancel_order` on 79 messages, mostly `change_order` (35), `delete_account` (22) and `track_order` (19). Probable cause: the prompt only shows in-scope examples. These are false positives the app would route to the rule engine.
+  - 2.8% of outputs were not valid labels: mostly "none", or invented labels like `reset_password` and `register_new_account`.
+- Bug found and fixed while scoring: pandas turned empty predictions into NaN, which were then counted as `out_of_scope` instead of `unknown`. I re-scored from the saved predictions; accuracy and F1 were unchanged.
+- Prediction CSVs contain Bitext text, so they are git-ignored. Metrics, confusion matrices and PNG plots are committed.
+
+## 7. LoRA training notebook (`training/finetune_intent_lora.ipynb`, source `finetune_intent_lora.py`)
+- Kept from the course notebook (Module 9 Practical 2):
+  - `train_causal_lm`, verbatim
+  - loss on the answer only (prompt labels = -100), right-padding collate
+  - r=16, alpha=32, dropout 0.05, all-linear
+  - lr 2e-4, batch 4 × grad-accum 2, 1 epoch, 5% linear warm-up
+  - gradient checkpointing; float16 on a T4 with GradScaler
+- Changed:
+  - Qwen2.5-1.5B-**Instruct** with its chat template.
+  - The answer is the label followed by `<|im_end|>`, Qwen-Instruct's EOS token, so the model learns to stop.
+  - The training cap is 200 per intent (5,400 examples). Val and test are complete.
+  - The prompt is the zero-shot format from `intent_prompt.py` (no examples), exactly what the app sends.
+- Merge: the base model is reloaded in float32, the adapter is merged (`merge_and_unload`) and the result is cast to **bfloat16** for saving. Merging in fp16 would round twice, and the app runs bf16.
+- Publish: `HfApi.upload_folder` to a public repo, with a short model card. The commit hash is printed for the decisions log.
+- Outputs: `train_run_finetuned.json` (settings, time per epoch, peak GPU memory, metrics), the loss curve, and the confusion matrix.

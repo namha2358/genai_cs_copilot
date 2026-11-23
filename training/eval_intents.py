@@ -57,6 +57,8 @@ def predict(args, texts):
 
 def score(gold, pred_bitext):
     """gold: true labels (Bitext or app labels). pred_bitext: parsed Bitext label or None."""
+    # pandas turns None into NaN (a float), so treat anything that isn't a string as "no valid label".
+    pred_bitext = [p if isinstance(p, str) else None for p in pred_bitext]
     gold_is_bitext = set(gold) <= set(BITEXT_LABELS)
     pred_app = [to_app_label(p) for p in pred_bitext]
     gold_app = [to_app_label(g) if gold_is_bitext else g for g in gold]
@@ -120,7 +122,6 @@ def main():
 
     if args.preds:
         df = pd.read_csv(args.preds)
-        df["pred"] = df["pred"].where(df["pred"].notna(), None)
         sec = None
     else:
         df = pd.read_csv(args.csv)
