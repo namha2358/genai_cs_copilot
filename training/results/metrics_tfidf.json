@@ -1,0 +1,17 @@
+{
+  "rows": 2672,
+  "unknown_rate": 0.0,
+  "overall_accuracy": 0.9974,
+  "overall_macro_f1": 0.9974,
+  "inscope_rows": 396,
+  "inscope_accuracy": 0.9924,
+  "inscope_macro_f1": 0.9962,
+  "f1_cancel_order": 0.9846,
+  "f1_get_refund": 1.0,
+  "f1_track_refund": 1.0,
+  "f1_check_refund_policy": 1.0,
+  "name": "tfidf",
+  "model": "TF-IDF word1-2+char3-5 + LogisticRegression(C=10)",
+  "val_accuracy": 0.9981,
+  "train_rows": 21528
+}
