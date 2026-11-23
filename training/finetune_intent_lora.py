@@ -347,7 +347,6 @@ if device.type == "cuda":
 merged = AutoModelForCausalLM.from_pretrained(MODEL_ID, dtype=torch.float32)
 merged = PeftModel.from_pretrained(merged, f"{OUT_DIR}/qwen-intent-lora").merge_and_unload()  # W + (alpha/r)BA
 merged = merged.to(torch.bfloat16)
-merged.generation_config.do_sample = False  # greedy by default for whoever loads it
 MERGED_DIR = f"{OUT_DIR}/qwen-intent-merged"
 merged.save_pretrained(MERGED_DIR)
 tok.padding_side = "left"

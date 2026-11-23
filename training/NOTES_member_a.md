@@ -104,3 +104,24 @@ Short notes for the report section. Numbers come from `training/results/*.csv`.
 - Merge: the base model is reloaded in float32, the adapter is merged (`merge_and_unload`) and the result is cast to **bfloat16** for saving. Merging in fp16 would round twice, and the app runs bf16.
 - Publish: `HfApi.upload_folder` to a public repo, with a short model card. The commit hash is printed for the decisions log.
 - Outputs: `train_run_finetuned.json` (settings, time per epoch, peak GPU memory, metrics), the loss curve, and the confusion matrix.
+
+## 8. QUICK_RUN smoke test of the notebook (CPU)
+- Hardware: the same 4-vCPU cloud Xeon, float32 (the course notebook's CPU default). **This is not a laptop**, so it is a stand-in until the laptop run.
+- Run: 270 training examples (10 per intent), 68 batches.
+  - **17.7 s per batch**, 20.0 min for the subset.
+  - Extrapolated to the full 5,400 examples (1,350 batches): about **6.6 h per epoch on this CPU**.
+  - Trainable parameters: 18,464,768 of 1,562,179,072 (1.18%).
+- Even this tiny run improved over the few-shot baseline. Do not report these numbers; only 54 rows were scored:
+  - val: accuracy 0.889, unknown rate 0
+  - test: accuracy 0.852
+- The smoke test found a bug in the merge cell: `generation_config.do_sample = False` conflicts with Qwen's default sampling values, so saving failed. I removed the line; the app passes `do_sample=False` on every call anyway.
+- I re-ran the merge from the saved adapter. The merged bf16 folder (2.9 GB) loads through `app/intent_model.py` with the zero-shot prompt chosen automatically. It gives `cancel_order`, `track_refund`, `check_refund_policy`, and `track_refund` for "I'm waiting for a reimbursement of 50 dollars" (the few-shot model said `get_refund`).
+- **UNVERIFIED (Colab-only code paths):** `pip install`, `git clone`, the `HF_TOKEN` secret, `upload_folder` and `files.download` were not executed here.
+
+### Laptop vs Colab table (optional, L4)
+
+| hardware | precision | s/batch (batch 4) | time per epoch (5,400 ex) | test accuracy |
+|---|---|---|---|---|
+| cloud CPU, 4 vCPU Xeon (stand-in) | fp32 | 17.7 | ~6.6 h (extrapolated) | n/a (smoke test) |
+| your laptop (QUICK_RUN) | fp32 | to fill | to fill | n/a |
+| Colab T4 | fp16 | to fill | to fill | to fill |
