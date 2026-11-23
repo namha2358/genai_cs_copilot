@@ -143,6 +143,26 @@ class TestChecks(unittest.TestCase):
         draft = "Your refund is guaranteed to arrive by Friday (Policy REF-02)."
         self.assertFalse(check_draft(draft, "info", "REF-02")[0])
 
+class TestHandmadeSet(unittest.TestCase):
+    """The hand-made test set's expected decisions stay in line with the rules."""
+
+    def test_expected_decisions_match_rules(self):
+        import csv                                                       # reads the test set
+        policies = load_policies()
+        with open(ORDERS_PATH, encoding="utf-8") as f:
+            orders = {o["order_id"]: o for o in json.load(f)}
+        path = Path(__file__).resolve().parent / "handmade_test_set.csv"
+        with open(path, encoding="utf-8", newline="") as f:
+            rows = list(csv.DictReader(f))
+        self.assertGreaterEqual(len(rows), 40)
+        for row in rows:
+            if row["multi_intent"] == "yes":
+                continue                                                 # routed by the app, not the rules
+            with self.subTest(case=row["case_id"]):
+                order = orders.get(row["order_id"]) if row["order_id"] else None
+                result = check_request(row["expected_intent"], order, policies)
+                self.assertEqual(result.decision, row["expected_decision"])
+                self.assertEqual(result.policy_id, row["expected_policy_id"])
 
 if __name__ == "__main__":
     unittest.main()
