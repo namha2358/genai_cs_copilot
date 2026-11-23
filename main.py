@@ -8,8 +8,10 @@ from app.embeddings import EmbeddingModel      # spaCy embedding logic
 from app.classifier import predict             # CNN image classification
 from app.gan_generator import generate_digits_png   # GAN digit generation
 from app.cifar_generators import generate_diffusion_png, generate_ebm_png   # diffusion and EBM image generation
+from app.support_api import router as support_router
 
 app = FastAPI()
+app.include_router(support_router)
 
 # Bigram model
 corpus = [
