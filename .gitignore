@@ -29,3 +29,5 @@ checkpoints/
 
 # Notebook clutter
 .ipynb_checkpoints/
+# Member A: prediction files contain Bitext text (derived data), kept local
+training/results/preds_*.csv

@@ -1,0 +1,18 @@
+{
+  "rows": 48,
+  "unknown_rate": 0.0208,
+  "app_accuracy": 0.8125,
+  "inscope_rows": 40,
+  "inscope_accuracy": 0.8,
+  "inscope_macro_f1": 0.767,
+  "f1_cancel_order": 0.8696,
+  "f1_get_refund": 0.8235,
+  "f1_track_refund": 0.875,
+  "f1_check_refund_policy": 0.5,
+  "name": "fewshot_handmade",
+  "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+  "revision": null,
+  "prompt": "few_shot",
+  "data": "eval/handmade_test_set.csv",
+  "sec_per_message": 0.824
+}
