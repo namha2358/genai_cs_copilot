@@ -9,8 +9,17 @@ from app.classifier import predict             # CNN image classification
 from app.gan_generator import generate_digits_png   # GAN digit generation
 from app.cifar_generators import generate_diffusion_png, generate_ebm_png   # diffusion and EBM image generation
 from app.support_api import router as support_router
+from contextlib import asynccontextmanager
+from app.database import seed_orders
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Prepare the order database before accepting requests."""
+    seed_orders()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 app.include_router(support_router)
 
 # Bigram model
