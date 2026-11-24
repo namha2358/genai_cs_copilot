@@ -1,0 +1,43 @@
+{
+  "store_name": "LUMON",
+  "store_today": "2026-12-01",
+  "refund_window_days": 30,
+  "review_total_over": 1500.00,
+  "refund_business_days": {
+  "credit_card": [5, 7],
+  "paypal": [3, 5],
+  "gift_card": [1, 1]
+  },
+  "policies": [
+    {
+      "id": "CAN-01",
+      "title": "Order cancellation",
+      "text": "Orders can be cancelled at no charge until they ship. There is no cancellation fee. Once an order has shipped, it can no longer be cancelled, and the customer can request a refund after delivery under REF-01."
+    },
+    {
+      "id": "REF-01",
+      "title": "Refund window",
+      "text": "Refundable items can be refunded within 30 days of the delivery date, unworn and with original tags attached. The refund window starts on delivery, so an order that has not been delivered yet is not eligible for a refund."
+    },
+    {
+      "id": "REF-02",
+      "title": "Refund status and timing",
+      "text": "A requested refund is waiting for the returned item to arrive and be approved by staff. After a refund is approved, it reaches the customer within 5-7 business days for credit card payments, 3-5 business days for PayPal payments, and 1 business day as store credit for gift card payments."
+    },
+    {
+      "id": "REF-03",
+      "title": "Non-refundable items",
+      "text": "Gift cards, final-sale items, underwear, swimwear and altered items cannot be refunded."
+    },
+    {
+      "id": "INF-01",
+      "title": "Required information",
+      "text": "Staff need the order ID to handle any cancellation or refund request. If the order ID is missing or does not match an order, ask the customer for it before making any decision."
+    },
+    {
+      "id": "REV-01",
+      "title": "Staff review",
+      "text": "A staff member must review the request before replying when the order total is over $1,500, when an order has both refundable and non-refundable items, or when the order record is missing information needed to decide."
+    }
+  ]
+}
