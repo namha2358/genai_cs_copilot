@@ -125,3 +125,22 @@ Short notes for the report section. Numbers come from `training/results/*.csv`.
 | cloud CPU, 4 vCPU Xeon (stand-in) | fp32 | 17.7 | ~6.6 h (extrapolated) | n/a (smoke test) |
 | your laptop (QUICK_RUN) | fp32 | to fill | to fill | n/a |
 | Colab T4 | fp16 | to fill | to fill | to fill |
+
+## 9. Hand-made test set (`eval/handmade_test_set.csv`, 48 messages)
+- Command: `python training/eval_intents.py --name fewshot_handmade --model-id Qwen/Qwen2.5-1.5B-Instruct --prompt few_shot --csv eval/handmade_test_set.csv --text-col message --label-col expected_intent`
+- Base model snapshot used: `989aa7980e4cf806f80c7fef2b1adb7bc71aa306`, bfloat16, the same 4-vCPU cloud Xeon.
+- The gold labels are app labels, so `app_accuracy` replaces the 27-way overall metrics.
+
+| model | app acc | in-scope acc (40 rows) | in-scope macro-F1 | F1 cancel / get_refund / track_refund / policy | unknown rate | s/message |
+|---|---|---|---|---|---|---|
+| Qwen2.5-1.5B-Instruct, few-shot | 0.813 | 0.800 | 0.767 | 0.87 / 0.82 / 0.88 / 0.50 | 0.021 | 0.82 |
+| Qwen2.5-1.5B-Instruct + LoRA, zero-shot | pending: fine-tuned model not published yet | | | | | |
+
+- Few-shot errors (9 of 48):
+  - `get_refund` → `cancel_order` on 3 messy messages (HM-13, HM-16, HM-18): "refund??", "send it back for a refund", "money back b4 it ships".
+  - `get_refund` → other Bitext intents (`complaint`, `change_order`), so `out_of_scope` (HM-08, HM-22, multi-intent).
+  - `check_refund_policy` → `delivery_period` (HM-19). The policy label has only 2 rows, so its F1 of 0.50 is noisy.
+  - `track_refund` → `check_refund_policy` (HM-37) and → `get_refund` (HM-48, prompt injection; the intent itself was still close).
+  - One free-text non-label ("None of the provided intents match the question", HM-34) → `unknown`.
+- No out-of-scope message was routed to an in-scope label (0 false positives into the rule engine on this set).
+- To get the "after" number: `python training/eval_intents.py --name finetuned_handmade --model-id <user>/<repo> --revision <sha> --prompt zero_shot --csv eval/handmade_test_set.csv --text-col message --label-col expected_intent`
