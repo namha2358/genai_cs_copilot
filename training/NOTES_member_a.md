@@ -73,7 +73,7 @@ Short notes for the report section. Numbers come from `training/results/*.csv`.
 |---|---|---|---|---|---|---|
 | TF-IDF + logistic regression | 0.997 | 0.997 | 0.992 | 0.996 | 0 | ~0 |
 | Qwen2.5-1.5B-Instruct, few-shot (bf16) | 0.690 | 0.683 | 0.848 | 0.761 | 0.028 | 0.89 (batch 16) |
-| Qwen2.5-1.5B-Instruct + LoRA | pending (Colab) | | | | | |
+| Qwen2.5-1.5B-Instruct + LoRA, zero-shot (Colab T4) | 0.997 | 0.997 | 0.987 | 0.991 | 0 | 0.38 (cloud CPU, hand-made set) |
 
 - TF-IDF details:
   - word 1–2-grams plus char 3–5-grams, logistic regression
@@ -124,7 +124,7 @@ Short notes for the report section. Numbers come from `training/results/*.csv`.
 |---|---|---|---|---|
 | cloud CPU, 4 vCPU Xeon (stand-in) | fp32 | 17.7 | ~6.6 h (extrapolated) | n/a (smoke test) |
 | your laptop (QUICK_RUN) | fp32 | to fill | to fill | n/a |
-| Colab T4 | fp16 | to fill | to fill | to fill |
+| Colab T4 | bf16 (see section 10) | 2.58 | 58.0 min | 0.997 |
 
 ## 9. Hand-made test set (`eval/handmade_test_set.csv`, 48 messages)
 - Command: `python training/eval_intents.py --name fewshot_handmade --model-id Qwen/Qwen2.5-1.5B-Instruct --prompt few_shot --csv eval/handmade_test_set.csv --text-col message --label-col expected_intent`
@@ -134,7 +134,7 @@ Short notes for the report section. Numbers come from `training/results/*.csv`.
 | model | app acc | in-scope acc (40 rows) | in-scope macro-F1 | F1 cancel / get_refund / track_refund / policy | unknown rate | s/message |
 |---|---|---|---|---|---|---|
 | Qwen2.5-1.5B-Instruct, few-shot | 0.813 | 0.800 | 0.767 | 0.87 / 0.82 / 0.88 / 0.50 | 0.021 | 0.82 |
-| Qwen2.5-1.5B-Instruct + LoRA, zero-shot | pending: fine-tuned model not published yet | | | | | |
+| Qwen2.5-1.5B-Instruct + LoRA, zero-shot | 0.875 | 0.875 | 0.934 | 0.89 / 0.97 / 0.88 / 1.00 | 0.021 | 0.38 |
 
 - Few-shot errors (9 of 48):
   - `get_refund` → `cancel_order` on 3 messy messages (HM-13, HM-16, HM-18): "refund??", "send it back for a refund", "money back b4 it ships".
@@ -143,4 +143,33 @@ Short notes for the report section. Numbers come from `training/results/*.csv`.
   - `track_refund` → `check_refund_policy` (HM-37) and → `get_refund` (HM-48, prompt injection; the intent itself was still close).
   - One free-text non-label ("None of the provided intents match the question", HM-34) → `unknown`.
 - No out-of-scope message was routed to an in-scope label (0 false positives into the rule engine on this set).
-- To get the "after" number: `python training/eval_intents.py --name finetuned_handmade --model-id <user>/<repo> --revision <sha> --prompt zero_shot --csv eval/handmade_test_set.csv --text-col message --label-col expected_intent`
+- The "after" row was produced with: `python training/eval_intents.py --name finetuned_handmade --model-id lt3025/qwen2.5-1.5b-instruct-bitext-intent --revision 4b6e1b593a4e19cd37300386dba3b275a9ce43c1 --prompt zero_shot --csv eval/handmade_test_set.csv --text-col message --label-col expected_intent`
+
+### Before and after by category (correct out of n)
+
+| category | n | few-shot | fine-tuned |
+|---|---|---|---|
+| clean | 10 | 9 | 9 |
+| messy | 10 | 6 | **10** |
+| missing_order | 6 | 5 | 5 |
+| multi_intent | 6 | 5 | **3** |
+| out_of_scope | 8 | 7 | 7 |
+| prompt_injection | 8 | 7 | **8** |
+| **total** | 48 | 39 | **42** |
+
+- Fine-tuning fixed every messy message: the 3 `get_refund` → `cancel_order` errors are gone.
+- Fine-tuned errors (6 of 48):
+  - Multi-intent got worse (HM-21, HM-22, HM-24). The model picks the *other* request (`change_order`, `change_shipping_address`), which is outside scope, so the in-scope request is missed. Bitext has one intent per message, so the fine-tune learned to pick a single label; the few-shot model happened to pick the in-scope one more often.
+  - "When will my refund arrive / show up?" → `delivery_period` (HM-05, HM-37), so `out_of_scope`. Bitext's `delivery_period` is about "when will it arrive", and "arrive" outweighs "refund".
+  - HM-34 ("wool blazer in a size 50") → the invented label `size_50_wool_blazer`, so `unknown`. The app handles `unknown` safely.
+- Every fine-tuned error now goes to `out_of_scope` or `unknown`, never to a wrong in-scope label. The app escalates instead of applying the wrong policy, which is the safer failure.
+- Report point: on Bitext the fine-tune lifts accuracy from 0.69 to 0.997, but on the hand-made set only from 0.81 to 0.875. Most of the remaining gap is multi-intent messages, which the single-label setup can't represent.
+
+## 10. Full fine-tune on Colab
+- Published: `lt3025/qwen2.5-1.5b-instruct-bitext-intent`, revision `4b6e1b593a4e19cd37300386dba3b275a9ce43c1` (`training/results/published_model.json`). Add both to the decisions log.
+- The app uses it with `INTENT_MODEL_ID` and `INTENT_MODEL_REVISION` set to those values; the zero-shot prompt is chosen automatically.
+- Tesla T4, 5,400 examples, 1 epoch: 58.0 min, 2.58 s per batch, peak GPU memory 4.26 GB. Trainable parameters 18.5 M of 1.56 B (1.18%).
+- Bitext val: accuracy 0.997, in-scope accuracy 1.000. Bitext test: accuracy 0.997, in-scope accuracy 0.987, unknown rate 0.
+- **Precision note:** training ran in **bfloat16**, not float16. `torch.cuda.is_bf16_supported()` returns True on the T4 in torch 2.14, although the T4 has no native bf16 hardware, so bf16 is emulated and probably slower than fp16 would be. Results are unaffected; the time per epoch may be higher than an fp16 run.
+- Versions: torch 2.14.1+cu130, transformers 5.24.1, peft 0.22.0.
+- Hand-made set scored on the cloud CPU in bf16: 0.38 s per message, about half the few-shot model's 0.82 s because the zero-shot prompt is much shorter.

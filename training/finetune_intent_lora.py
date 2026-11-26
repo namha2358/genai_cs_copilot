@@ -40,7 +40,7 @@ import sys
 
 IN_COLAB = "google.colab" in sys.modules
 REPO_URL = "https://github.com/namha2358/genai_cs_copilot"
-REPO_BRANCH = "claude/zen-franklin-vi9gv4"  # switch to "main" once Member A's pull request is merged
+REPO_BRANCH = "main"
 
 if IN_COLAB:
     # Colab already has torch; add the Hugging Face libraries and get the team repo (public).
