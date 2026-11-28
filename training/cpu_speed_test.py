@@ -126,6 +126,8 @@ def main():
         print(row, flush=True)
         rows.append(row)
 
+    if not rows:
+        sys.exit("No configuration finished, so nothing was saved. See the errors above.")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with OUT.open("w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]))

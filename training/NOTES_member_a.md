@@ -173,3 +173,20 @@ Short notes for the report section. Numbers come from `training/results/*.csv`.
 - **Precision note:** training ran in **bfloat16**, not float16. `torch.cuda.is_bf16_supported()` returns True on the T4 in torch 2.14, although the T4 has no native bf16 hardware, so bf16 is emulated and probably slower than fp16 would be. Results are unaffected; the time per epoch may be higher than an fp16 run.
 - Versions: torch 2.14.1+cu130, transformers 5.24.1, peft 0.22.0.
 - Hand-made set scored on the cloud CPU in bf16: 0.38 s per message, about half the few-shot model's 0.82 s because the zero-shot prompt is much shorter.
+
+## 11. Laptop speed test (`training/results/cpu_speed_test_laptop.csv`)
+- Hardware: MacBook Air, Apple chip, CPU only (no GPU or MPS), 4 threads. torch 2.15.0, transformers 5.24.1, native arm64 Python.
+- The cloud results stay in `cpu_speed_test.csv` for comparison.
+
+| model | dtype | load s | classify s | 150-token draft s | tokens/s | peak RAM GB |
+|---|---|---|---|---|---|---|
+| 1.5B | float32 | 63.3 | 0.58 | 19.2 | 7.8 | 5.91 |
+| 1.5B | **bfloat16** | 1.3 | 3.05* | **8.9** | **16.9** | **3.32** |
+| 0.5B | float32 | 18.3 | 0.16 | 5.4 | 28.0 | 4.05 |
+| 0.5B | bfloat16 | 1.1 | 0.95* | 3.2 | 46.7 | 1.36 |
+
+- **Decision: keep bfloat16 on the laptop.** For the 1.5B model, a full request (classify + 150-token draft) takes about 12 s in bf16 against about 20 s in fp32, at about half the memory. The worry that bf16 would be slow on a laptop without bf16 hardware did not hold on this Mac.
+- On this Mac bf16 is even faster than on the cloud CPU (8.9 s against 15.7 s for the draft).
+- *Classify in bf16 looks slower than fp32, but this is probably a first-call effect. The test runs no warm-up. bf16 loads lazily (1.3 s), so the first call still pages the weights in from disk. fp32 converts every weight while loading (63 s), so its first call is already warm. The draft, timed second, shows bf16 at twice the fp32 speed. In the app, only the first request after startup pays this.
+- The fp32 peak RAM (5.9 GB) is lower than on Linux (9.5 GB). macOS reports memory differently (compressed and file-backed pages), so the Linux number stays the one checked against the 8 GB rule.
+- Setup lesson for the README: on Apple-chip Macs, an Intel (x86_64) Anaconda installs torch 2.2.2, the last Intel-Mac build, which is too old for transformers 5 (needs torch ≥ 2.6). Use a native arm64 Python, e.g. `uv venv --python-preference only-managed --python cpython-3.12-macos-aarch64`.
