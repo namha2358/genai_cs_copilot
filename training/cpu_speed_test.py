@@ -15,7 +15,6 @@ import csv
 import json
 import os
 import platform
-import resource
 import subprocess
 import sys
 import time
@@ -36,6 +35,20 @@ LABELS = [
 ]
 MESSAGE = "Hi, I ordered a jacket last week but it arrived damaged. I want my money back please."
 ORDER_CONTEXT = "Order 10042: jacket, $89.00, delivered 5 days ago. Policy R1: damaged items get a full refund within 30 days."
+
+
+def peak_ram_gb():
+    """Peak resident memory of this process in GB, or None if it can't be measured."""
+    if sys.platform == "win32":  # the resource module doesn't exist on Windows
+        try:
+            import psutil
+            return round(psutil.Process().memory_info().peak_wset / 1024**3, 2)
+        except ImportError:
+            return None  # pip install psutil to measure memory on Windows
+    import resource
+    # ru_maxrss is the peak resident memory of this process, in KB on Linux (bytes on macOS).
+    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    return round(peak / (1024**3 if sys.platform == "darwin" else 1024**2), 2)
 
 
 def run_one(model_id, dtype_name):
@@ -79,14 +92,12 @@ def run_one(model_id, dtype_name):
     # min = max = 150 forces exactly 150 new tokens, so every config does the same amount of work.
     draft_s, draft_tokens, _ = timed_generate(draft_enc, 150, 150)
 
-    # ru_maxrss is the peak resident memory of this process, in KB on Linux (bytes on macOS).
-    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    peak_gb = peak / (1024**3 if sys.platform == "darwin" else 1024**2)
+    peak_gb = peak_ram_gb()
     return {
         "model": model_id, "dtype": dtype_name, "load_s": round(load_s, 1),
         "classify_s": round(clf_s, 2), "classify_output": clf_text.strip(),
         "draft_150_s": round(draft_s, 1), "draft_tokens": draft_tokens,
-        "draft_tok_per_s": round(draft_tokens / draft_s, 2), "peak_ram_gb": round(peak_gb, 2),
+        "draft_tok_per_s": round(draft_tokens / draft_s, 2), "peak_ram_gb": peak_gb,
         "threads": torch.get_num_threads(), "cpu": platform.processor() or platform.machine(),
     }
 

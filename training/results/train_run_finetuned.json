@@ -1,0 +1,59 @@
+{
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "device": "cuda",
+  "gpu": "Tesla T4",
+  "compute_dtype": "torch.bfloat16",
+  "quick_run": false,
+  "train_examples": 5400,
+  "train_per_intent": 200,
+  "lora": {
+    "rank": 16,
+    "alpha": 32,
+    "dropout": 0.05,
+    "target_modules": "all-linear"
+  },
+  "lr": 0.0002,
+  "batch_size": 4,
+  "grad_accum": 2,
+  "epochs": 1,
+  "max_len": 256,
+  "trainable_params": 18464768,
+  "total_params": 1562179072,
+  "time_per_epoch_min": 57.98,
+  "sec_per_batch": 2.577,
+  "peak_gpu_memory_gb": 4.26,
+  "final_train_loss_avg_last50": 0.0,
+  "metrics": {
+    "val": {
+      "rows": 2672,
+      "unknown_rate": 0.0,
+      "overall_accuracy": 0.9966,
+      "overall_macro_f1": 0.9966,
+      "inscope_rows": 396,
+      "inscope_accuracy": 1.0,
+      "inscope_macro_f1": 0.9975,
+      "f1_cancel_order": 1.0,
+      "f1_get_refund": 1.0,
+      "f1_track_refund": 1.0,
+      "f1_check_refund_policy": 0.99
+    },
+    "test": {
+      "rows": 2672,
+      "unknown_rate": 0.0,
+      "overall_accuracy": 0.997,
+      "overall_macro_f1": 0.997,
+      "inscope_rows": 396,
+      "inscope_accuracy": 0.9874,
+      "inscope_macro_f1": 0.9911,
+      "f1_cancel_order": 0.9796,
+      "f1_get_refund": 0.9898,
+      "f1_track_refund": 1.0,
+      "f1_check_refund_policy": 0.995
+    }
+  },
+  "versions": {
+    "torch": "2.14.1+cu130",
+    "transformers": "5.24.1",
+    "peft": "0.22.0"
+  }
+}
