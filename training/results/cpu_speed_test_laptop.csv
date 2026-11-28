@@ -1,0 +1,5 @@
+model,dtype,load_s,classify_s,classify_output,draft_150_s,draft_tokens,draft_tok_per_s,peak_ram_gb,threads,cpu
+Qwen/Qwen2.5-1.5B-Instruct,float32,63.3,0.58,refund_policy,19.2,150,7.8,5.91,4,arm
+Qwen/Qwen2.5-1.5B-Instruct,bfloat16,1.3,3.05,refund_policy,8.9,150,16.93,3.32,4,arm
+Qwen/Qwen2.5-0.5B-Instruct,float32,18.3,0.16,complaint,5.4,150,27.98,4.05,4,arm
+Qwen/Qwen2.5-0.5B-Instruct,bfloat16,1.1,0.95,complaint,3.2,150,46.71,1.36,4,arm
