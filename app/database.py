@@ -5,7 +5,8 @@ import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
-
+from datetime import datetime, timezone
+from uuid import uuid4
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ORDERS_PATH = PROJECT_ROOT / "store" / "orders.json"
@@ -33,13 +34,21 @@ def connect_db():
 
 
 def initialize_database():
-    """Create the orders table if it does not already exist."""
+    """Create storage tables without deleting existing records."""
     with connect_db() as connection:
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS orders (
                 order_id TEXT PRIMARY KEY,
                 order_json TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS drafts (
+                draft_id TEXT PRIMARY KEY,
+                record_json TEXT NOT NULL
             )
             """
         )
@@ -97,6 +106,55 @@ def list_orders() -> list[dict]:
 
     return [json.loads(row["order_json"]) for row in rows]
 
+def save_draft(
+    customer_message: str,
+    response: dict,
+    order_snapshot: dict | None,
+    model_id: str,
+    model_revision: str | None,
+) -> dict:
+    """Save a generated draft and its supporting context."""
+    now = datetime.now(timezone.utc).isoformat()
+
+    record = {
+        **response,
+        "draft_id": str(uuid4()),
+        "customer_message": customer_message,
+        "original_draft": response["draft"],
+        "order_snapshot": order_snapshot,
+        "model_id": model_id,
+        "model_revision": model_revision,
+        "created_at": now,
+        "updated_at": now,
+        "version": 1,
+        "approved_at": None,
+        "approved_by": None,
+    }
+
+    with connect_db() as connection:
+        connection.execute(
+            """
+            INSERT INTO drafts (draft_id, record_json)
+            VALUES (?, ?)
+            """,
+            (
+                record["draft_id"],
+                json.dumps(record, ensure_ascii=False),
+            ),
+        )
+
+    return record
+
+
+def get_draft(draft_id: str) -> dict | None:
+    """Return a saved draft, or None if the ID does not exist."""
+    with connect_db() as connection:
+        row = connection.execute(
+            "SELECT record_json FROM drafts WHERE draft_id = ?",
+            (draft_id,),
+        ).fetchone()
+
+    return json.loads(row["record_json"]) if row else None
 
 if __name__ == "__main__":
     from store.rules import check_request

@@ -11,13 +11,18 @@ from app.cifar_generators import generate_diffusion_png, generate_ebm_png   # di
 from app.support_api import router as support_router
 from contextlib import asynccontextmanager
 from app.database import seed_orders
+from app.intent_model import load_model
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Prepare the order database before accepting requests."""
+    """Prepare the database and load the model once per server process."""
     seed_orders()
-    yield
-
+    app.state.intent_model = load_model()
+    try:
+        yield
+    finally:
+        app.state.intent_model = None
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(support_router)
